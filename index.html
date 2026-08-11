@@ -14,15 +14,15 @@
   </style>
 </head>
 <body>
-  <!-- iframe pointing to your Google Site -->
-  <iframe id="frame" src="https://sites.google.com/view/ancestral-home-operations" allowfullscreen sandbox="allow-scripts allow-forms allow-same-origin allow-popups"></iframe>
+  <!-- iframe pointing to the alternate Google Script URL -->
+  <iframe id="frame" src="https://script.google.com/macros/s/AKfycbzsSJKyUnW6FDAvHbiDbqRitg2SOPECjgBkk1_vGIZbYsgmf2LuFVQqV4dbyoV-3tg6mQ/exec" allowfullscreen sandbox="allow-scripts allow-forms allow-same-origin allow-popups"></iframe>
 
   <!-- fallback shown when embedding is blocked or the page fails to load inside the iframe -->
   <div id="fallback" class="hidden" role="dialog" aria-live="polite">
     <div class="note">
       <h1>Unable to embed site</h1>
-      <p>Some sites (including modern Google Sites) disallow embedding in an iframe. If the site does not load here, open it in a new tab.</p>
-      <p><a id="openLink" class="btn" href="https://sites.google.com/view/ancestral-home-operations" target="_blank" rel="noopener">Open original site</a></p>
+      <p>Some sites disallow embedding in an iframe. If the site does not load here, open it in a new tab.</p>
+      <p><a id="openLink" class="btn" href="https://script.google.com/macros/s/AKfycbzsSJKyUnW6FDAvHbiDbqRitg2SOPECjgBkk1_vGIZbYsgmf2LuFVQqV4dbyoV-3tg6mQ/exec" target="_blank" rel="noopener">Open original site</a></p>
       <p style="margin-top:1em;color:#666;font-size:0.9em">If you want a true proxy (embed despite X-Frame-Options), you'll need a server-side proxy that rewrites response headers. I can help set that up if desired.</p>
     </div>
   </div>

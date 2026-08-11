@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Ancestral Home Operations</title>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    #frame { position: fixed; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
+    #fallback { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fff; color: #000; z-index: 10; padding: 20px; box-sizing: border-box; }
+    #fallback.hidden { display: none; }
+    .btn { display: inline-block; margin-top: 12px; padding: 10px 18px; background: #0366d6; color: #fff; text-decoration: none; border-radius: 6px; }
+    .note { max-width: 720px; text-align: center; }
+  </style>
+</head>
+<body>
+  <!-- iframe pointing to your Google Site -->
+  <iframe id="frame" src="https://sites.google.com/view/ancestral-home-operations" allowfullscreen sandbox="allow-scripts allow-forms allow-same-origin allow-popups"></iframe>
+
+  <!-- fallback shown when embedding is blocked or the page fails to load inside the iframe -->
+  <div id="fallback" class="hidden" role="dialog" aria-live="polite">
+    <div class="note">
+      <h1>Unable to embed site</h1>
+      <p>Some sites (including modern Google Sites) disallow embedding in an iframe. If the site does not load here, open it in a new tab.</p>
+      <p><a id="openLink" class="btn" href="https://sites.google.com/view/ancestral-home-operations" target="_blank" rel="noopener">Open original site</a></p>
+      <p style="margin-top:1em;color:#666;font-size:0.9em">If you want a true proxy (embed despite X-Frame-Options), you'll need a server-side proxy that rewrites response headers. I can help set that up if desired.</p>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      var iframe = document.getElementById('frame');
+      var fallback = document.getElementById('fallback');
+      // adjust height on resize (handles mobile browsers)
+      function setSize(){ iframe.style.height = window.innerHeight + 'px'; }
+      window.addEventListener('resize', setSize);
+      setSize();
+
+      // show fallback with a short delay if iframe hasn't loaded
+      var loaded = false;
+      iframe.addEventListener('load', function(){
+        loaded = true;
+        fallback.classList.add('hidden');
+      });
+
+      // after 2500ms, if not loaded, show fallback
+      setTimeout(function(){ if(!loaded){ fallback.classList.remove('hidden'); } }, 2500);
+    })();
+  </script>
+</body>
+</html>

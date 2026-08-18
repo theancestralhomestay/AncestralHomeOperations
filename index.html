@@ -28,8 +28,7 @@
 </head>
 <body>
   <!-- iframe pointing to the alternate Google Script URL -->
-  <iframe id="frame" src="https://script.google.com/macros/s/AKfycbzsSJKyUnW6FDAvHbiDbqRitg2SOPECjgBkk1_vGIZbYsgmf2LuFVQqV4dbyoV-3tg6mQ/exec" allowfullscreen sandbox="allow-scripts allow-forms allow-popups"></iframe>
-
+  <iframe id="frame" src="https://script.google.com/macros/s/AKfycbzsSJKyUnW6FDAvHbiDbqRitg2SOPECjgBkk1_vGIZbYsgmf2LuFVQqV4dbyoV-3tg6mQ/exec" allowfullscreen sandbox="allow-scripts allow-forms allow-same-origin allow-popups"></iframe>
   <!-- loader shown while iframe is loading -->
   <div id="loader" role="status" aria-live="polite">
     <div class="spinner" aria-hidden="true"></div>
@@ -42,13 +41,13 @@
   <!-- fallback shown only when embedding is blocked or the page fails to load inside the iframe -->
   <div id="fallback" role="dialog" aria-live="polite" aria-hidden="true">
     <div class="note">
-      <h1 style="margin-top:0">Couldn't load embedded site</h1>
-      <p style="color:#444">The site couldn't be displayed inside this page. This can happen if the remote site disallows embedding (X-Frame-Options or Content-Security-Policy), or if a network error occurred.</p>
+      <h1 style="margin-top:0">Couldn't load App</h1>
+      <p style="color:#444">The App couldn't be Loaded. This can happen if a network error occurred.</p>
       <p>
         <a id="openLink" class="btn" href="https://script.google.com/macros/s/AKfycbzsSJKyUnW6FDAvHbiDbqRitg2SOPECjgBkk1_vGIZbYsgmf2LuFVQqV4dbyoV-3tg6mQ/exec" target="_blank" rel="noopener">Open in new tab</a>
         <button id="retryBtn" class="btn secondary" style="margin-left:8px">Refresh page</button>
       </p>
-      <p style="margin-top:1em;color:#666;font-size:0.9em">If you need a true proxy to embed a site that blocks framing, you'll need a server-side proxy that rewrites response headers. I can help set that up.</p>
+      <p style="margin-top:1em;color:#666;font-size:0.9em">Please reach out to [the.ancestral.home.stay@gmail.com] </p>
     </div>
   </div>
 

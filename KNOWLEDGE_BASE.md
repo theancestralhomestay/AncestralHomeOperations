@@ -1,16 +1,18 @@
 # 🌐 Ancestral Home Operations - Web Portal: Knowledge Base
 
-**Document Version:** 1.0.0  
+**Document Version:** 1.1.0  
 **Last Updated:** September 2026  
 **Primary Repository:** `theancestralhomestay/AncestralHomeOperations`  
 **Deployment Target:** Static Web Hosting / GitHub Pages  
-**Target Application:** Google Apps Script Web App (`AKfycbzsSJKyUnW6FDAvHbiDbqRitg2SOPECjgBkk1_vGIZbYsgmf2LuFVQqV4dbyoV-3tg6mQ`)
+**Dynamic Endpoints:**
+- **PROD:** `https://script.google.com/macros/s/AKfycbzsSJKyUnW6FDAvHbiDbqRitg2SOPECjgBkk1_vGIZbYsgmf2LuFVQqV4dbyoV-3tg6mQ/exec`
+- **UAT:** `https://script.google.com/macros/s/AKfycbyyLa9kOInMAxhZ-Cs0SWuliiyYfvWryEcyxJLyiE0dM0_E3_sWSpAkONIiaM70mGAZNA/exec`
 
 ---
 
 ## 1. System Overview & Ecosystem Architecture
 
-The **Ancestral Home Operations Web Portal** serves as the lightweight, high-reliability web entryway and responsive wrapper for **The Ancestral Home Operations & Settlement Manager**. It embeds the Google Apps Script (GAS) Web Application inside a secure, full-viewport iframe while providing critical user-experience enhancements: seamless loading transitions, device-aware layout handling, accessibility adaptations, and graceful error recovery.
+The **Ancestral Home Operations Web Portal** serves as the lightweight, high-reliability web entryway, dynamic reverse proxy, and responsive wrapper for **The Ancestral Home Operations & Settlement Manager**. It embeds the Google Apps Script (GAS) Web Application inside a secure, full-viewport iframe while providing critical user-experience enhancements: dynamic multi-environment routing (`prod` vs `uat`), seamless loading transitions, device-aware layout handling, accessibility adaptations, and graceful error recovery.
 
 ### The Ancestral Homestay Platform Ecosystem
 
@@ -24,33 +26,38 @@ graph TD
     end
     
     subgraph Core Application Layer
-        GASApp["⚙️ AncestralHomestayApp (Google Apps Script Web App)"]
+        GASProd["⚙️ AncestralHomestayApp (PROD GAS Web App)"]
+        GASUat["🧪 AncestralHomestayApp (UAT GAS Web App)"]
     end
     
     subgraph Data & Cloud Services
-        GSheets[("📊 Google Sheets Database")]
+        GSheetsProd[("📊 PROD Google Sheets Database")]
+        GSheetsUat[("🧪 UAT Google Sheets Database")]
         GDrive["📁 Google Drive (Receipts & Files)"]
         Gmail["📧 Gmail / MailApp (OTP Auth)"]
     end
 
-    User -->|Visits Web URL| WebPortal
+    User -->|Visits Web URL / ?env=uat| WebPortal
     User -->|Opens Android/iOS App| AppShell
-    WebPortal -->|Sandboxed Iframe Embed| GASApp
-    AppShell -->|WebView Embed| GASApp
-    GASApp <-->|CRUD Data| GSheets
-    GASApp <-->|Store Files| GDrive
-    GASApp <-->|Send OTPs| Gmail
+    WebPortal -->|Default: PROD Embed| GASProd
+    WebPortal -->|?env=uat: UAT Embed| GASUat
+    AppShell -->|WebView Embed| WebPortal
+    GASProd <-->|CRUD Data| GSheetsProd
+    GASUat <-->|CRUD Data| GSheetsUat
+    GASProd <-->|Store Files| GDrive
+    GASProd <-->|Send OTPs| Gmail
 ```
 
 ---
 
-## 2. Technical Stack & Architecture
+## 2. Dynamic Multi-Environment Routing (`?env=uat`)
 
-- **Format:** Single Page Static Web Wrapper (`index.html`)
-- **Languages:** HTML5, CSS3, Vanilla JavaScript (ES5/ES6 compatible)
-- **Design Paradigm:** Zero-dependency, lightweight, mobile-first responsive architecture
-- **Embedded Endpoint:** Google Apps Script Executable URL (`/macros/s/.../exec`)
-- **Hosting Compatibility:** GitHub Pages, Netlify, Vercel, Cloudflare Pages, or static S3 bucket
+The portal inspects the query string `window.location.search` on initial load:
+
+| Target Environment | Query Parameter | Portal Entry URL | Embedded Apps Script Deployment | Visual Cues |
+| :--- | :--- | :--- | :--- | :--- |
+| **Production** | *(None / default)* | `https://theancestralhomestay.github.io/AncestralHomeOperations/` | `AKfycbzsSJKy...` (PROD) | Blue spinner, standard title |
+| **UAT / Staging** | `?env=uat` | `https://theancestralhomestay.github.io/AncestralHomeOperations/?env=uat` | `AKfycbyyLa9k...` (UAT) | Orange spinner, "UAT Mode" badge, title `Ancestral Home Operations (UAT)` |
 
 ---
 
@@ -93,10 +100,11 @@ sequenceDiagram
     participant Frame as iframe (#frame)
     participant GAS as Google Apps Script Server
 
-    User->>DOM: Load Web Portal
+    User->>DOM: Load Web Portal (Optional ?env=uat)
+    DOM->>DOM: Detect environment & configure ENDPOINTS
     DOM->>DOM: Render #loader spinner (hidden iframe)
     DOM->>DOM: Start ERROR_TIMEOUT timer (10,000ms)
-    DOM->>Frame: Request GAS Executable URL
+    DOM->>Frame: Request resolved GAS Executable URL
     
     alt Load Event Fires (Success within 10s)
         Frame->>GAS: Fetch & render web app
@@ -110,10 +118,10 @@ sequenceDiagram
     end
 ```
 
-1. **Initial State:** `#loader` is displayed with a CSS spinning loader. `#frame` is hidden via `visibility: hidden`.
+1. **Initial State:** `#loader` is displayed with a CSS spinning loader (blue for PROD, orange for UAT). `#frame` is hidden via `visibility: hidden`.
 2. **Success State (`load` event):** Once the iframe fires its `load` event, a `150ms` delay buffer executes before setting `#frame` to `visibility: visible` and hiding `#loader`. This prevents visual flicker during sub-resource painting.
 3. **Failure State (10s Timeout):** If cross-origin blocking, network failure, or timeout occurs, `#fallback` is displayed with:
-   - **Direct Link Button:** Opens the GAS URL directly in a new browser tab (`target="_blank"`).
+   - **Direct Link Button:** Opens the resolved GAS URL directly in a new browser tab (`target="_blank"`).
    - **Refresh Page Button:** Triggers `window.location.reload()` for clean retry.
    - **Support Contact Link:** Directs users to `the.ancestral.home.stay@gmail.com`.
 
@@ -139,17 +147,18 @@ try {
 ancestralhomeoperations/
 ├── .git/                   # Git version control metadata
 ├── index.html              # Core single-file portal application
-└── KNOWLEDGE_BASE.md       # Architectural specification and operations manual
+├── KNOWLEDGE_BASE.md       # Architectural specification and operations manual
+└── README.md               # Project documentation
 ```
 
 ### Key Configuration Variables (`index.html`)
 
-| Parameter | Current Value | Description |
-| :--- | :--- | :--- |
-| **Iframe Source (`src`)** | `https://script.google.com/macros/s/AKfycbzsSJKyUnW6FDAvHbiDbqRitg2SOPECjgBkk1_vGIZbYsgmf2LuFVQqV4dbyoV-3tg6mQ/exec` | Production GAS Web App deployment endpoint |
-| **Fallback Link (`href`)**| `https://script.google.com/macros/s/AKfycbzsSJKyUnW6FDAvHbiDbqRitg2SOPECjgBkk1_vGIZbYsgmf2LuFVQqV4dbyoV-3tg6mQ/exec` | Direct fallback link for blocked embeds |
-| **Timeout (`ERROR_TIMEOUT`)** | `10000` (10 seconds) | Milliseconds before fallback error view is presented |
-| **Contact Support** | `the.ancestral.home.stay@gmail.com` | Primary support and inquiry email |
+```javascript
+var ENDPOINTS = {
+  prod: "https://script.google.com/macros/s/AKfycbzsSJKyUnW6FDAvHbiDbqRitg2SOPECjgBkk1_vGIZbYsgmf2LuFVQqV4dbyoV-3tg6mQ/exec",
+  uat:  "https://script.google.com/macros/s/AKfycbyyLa9kOInMAxhZ-Cs0SWuliiyYfvWryEcyxJLyiE0dM0_E3_sWSpAkONIiaM70mGAZNA/exec"
+};
+```
 
 ---
 
@@ -157,44 +166,26 @@ ancestralhomeoperations/
 
 ### Deploying Updates via Git
 1. Ensure changes in `index.html` are tested across desktop and mobile browsers.
-2. Commit and push to `main`:
+2. Commit and push to `main` (or `feature/enhancements`):
    ```bash
    git add index.html KNOWLEDGE_BASE.md
    git commit -m "Update operations portal configuration"
-   git push origin main
+   git push origin <branch>
    ```
-3. If GitHub Pages is configured on the `main` branch, changes will be published automatically.
+3. GitHub Pages deploys automatically.
 
-### Updating the Target Google Apps Script URL
+### Updating Target Google Apps Script URLs
 When a new major version or new deployment ID is created in `ancestralhomestayapp`:
 1. Open [`index.html`](file:///sdcard/Projects/ancestralhomestay/ancestralhomeoperations/index.html).
-2. Update the `src` in line 31:
-   ```html
-   <iframe id="frame" src="<NEW_DEPLOYMENT_URL>" ...></iframe>
-   ```
-3. Update the fallback link `href` in line 47:
-   ```html
-   <a id="openLink" class="btn" href="<NEW_DEPLOYMENT_URL>" ...>Open in new tab</a>
-   ```
+2. Update `ENDPOINTS.prod` or `ENDPOINTS.uat` in the `ENDPOINTS` dictionary at the top of the script.
 
 ---
 
-## 6. Troubleshooting & Common Issues
+## 6. Release & Change History
 
-| Issue / Symptom | Root Cause | Solution |
+| Date | Version | Summary of Changes |
 | :--- | :--- | :--- |
-| **Fallback Screen Appears Immediately or after 10s** | 1. Third-party cookies blocked in Safari/Chrome preventing GAS authentication.<br>2. Google account not logged in or corporate workspace security policy blocks embedding. | Click **"Open in new tab"** button to open the Web App directly in the browser. |
-| **Black/Blank Screen on Mobile** | Browser height calc failure or ad-blocker blocking Google Script domain. | Verify `setSize()` resize listener and ensure `script.google.com` is whitelisted. |
-| **Changes in GAS Backend Not Reflecting** | Browser caching iframe content or GAS deployment not updated. | Click **"Refresh page"** or hard refresh (`Ctrl + Shift + R` / `Cmd + Shift + R`). Ensure GAS script has a new version deployment. |
-
----
-
-## 7. Change & Release History
-
-| Commit | Date | Summary of Changes |
-| :--- | :--- | :--- |
-| `bc8d05f` | 2026-08-18 | Cleared default text in loader div for cleaner UI |
-| `8d2e892` | 2026-08-18 | Updated iframe sandbox attributes and enhanced fallback error messaging |
-| `203562b` | 2026-08-18 | Implemented loading spinner animation, 10s graceful timeout, and retry button |
-| `5388d27` | 2026-08-11 | Updated iframe source URL to latest Google Script web app deployment |
-| `3f32cae` | 2026-08-11 | Initial creation of responsive full-page iframe wrapper |
+| **2026-09-03** | 1.1.0 | Added dynamic multi-environment routing (`?env=uat`), UAT badge/styling, and centralized `ENDPOINTS` configuration dictionary |
+| **2026-09-03** | 1.0.0 | Initialized comprehensive architecture knowledge base and README |
+| **2026-08-18** | 0.9.0 | Added loading spinner animation, 10s graceful timeout, and retry button |
+| **2026-08-11** | 0.1.0 | Initial creation of responsive full-page iframe wrapper |

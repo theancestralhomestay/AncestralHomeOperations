@@ -1,0 +1,47 @@
+name: Deploy Web Portal to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # --- SECURITY GUARD: Block Production deployment from non-main branches ---
+      - name: Guard Production Deployment
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::❌ Production GitHub Pages deployments are strictly restricted to the 'main' branch!"
+          echo "Attempted deployment from branch '${{ github.ref_name }}' was blocked."
+          echo "Please merge changes into 'main' before deploying."
+          exit 1
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

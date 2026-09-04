@@ -12,29 +12,34 @@
     #loader { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fff; color: #000; z-index: 50; }
     #loader.hidden { display: none !important; }
     .spinner { width: 56px; height: 56px; border-radius: 50%; border: 6px solid rgba(0,0,0,0.08); border-left-color: #0366d6; animation: spin 1s linear infinite; }
+    .spinner.uat { border-left-color: #e65100; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .loading-note { margin-top: 18px; text-align: center; color: #222; max-width: 720px; }
+    .uat-badge { display: inline-block; padding: 3px 8px; font-size: 12px; font-weight: 700; color: #fff; background-color: #e65100; border-radius: 4px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
 
     /* fallback (error) state */
     #fallback { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; background: #fff; color: #000; z-index: 60; }
     #fallback.visible { display: flex; }
-    .btn { display: inline-block; margin-top: 12px; padding: 10px 18px; background: #0366d6; color: #fff; text-decoration: none; border-radius: 6px; }
+    .btn { display: inline-block; margin-top: 12px; padding: 10px 18px; background: #0366d6; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 500; }
+    .btn.uat { background: #e65100; }
     .btn.secondary { background: #6c757d; }
-    .note { max-width: 720px; text-align: center; }
+    .note { max-width: 720px; text-align: center; padding: 16px; }
 
     /* small responsive tweak */
     @media (max-width:420px){ .loading-note, .note { padding: 12px; } }
   </style>
 </head>
 <body>
-  <!-- iframe pointing to the alternate Google Script URL -->
-  <iframe id="frame" src="https://script.google.com/macros/s/AKfycbzsSJKyUnW6FDAvHbiDbqRitg2SOPECjgBkk1_vGIZbYsgmf2LuFVQqV4dbyoV-3tg6mQ/exec" allowfullscreen sandbox="allow-scripts allow-forms allow-same-origin allow-popups"></iframe>
+  <!-- iframe pointing dynamically to PROD or UAT Google Script URL -->
+  <iframe id="frame" allowfullscreen sandbox="allow-scripts allow-forms allow-same-origin allow-popups"></iframe>
+  
   <!-- loader shown while iframe is loading -->
   <div id="loader" role="status" aria-live="polite">
-    <div class="spinner" aria-hidden="true"></div>
+    <div id="uatTag" class="uat-badge" style="display:none">UAT Mode</div>
+    <div id="spinner" class="spinner" aria-hidden="true"></div>
     <div class="loading-note">
-      <h2 style="margin:0 0 8px 0;font-weight:600"></h2>
-      <p style="margin:0;color:#555"></p>
+      <h2 id="loadingTitle" style="margin:0 0 8px 0;font-weight:600"></h2>
+      <p id="loadingSubtitle" style="margin:0;color:#555"></p>
     </div>
   </div>
 
@@ -42,29 +47,67 @@
   <div id="fallback" role="dialog" aria-live="polite" aria-hidden="true">
     <div class="note">
       <h1 style="margin-top:0">Couldn't load App</h1>
-      <p style="color:#444">The App couldn't be Loaded. This can happen if a network error occurred.</p>
+      <p id="fallbackMsg" style="color:#444">The App couldn't be Loaded. This can happen if a network error occurred or third-party cookies are blocked.</p>
       <p>
-        <a id="openLink" class="btn" href="https://script.google.com/macros/s/AKfycbzsSJKyUnW6FDAvHbiDbqRitg2SOPECjgBkk1_vGIZbYsgmf2LuFVQqV4dbyoV-3tg6mQ/exec" target="_blank" rel="noopener">Open in new tab</a>
+        <a id="openLink" class="btn" target="_blank" rel="noopener">Open in new tab</a>
         <button id="retryBtn" class="btn secondary" style="margin-left:8px">Refresh page</button>
       </p>
-      <p style="margin-top:1em;color:#666;font-size:0.9em">Please reach out to [the.ancestral.home.stay@gmail.com] </p>
+      <p style="margin-top:1em;color:#666;font-size:0.9em">Please reach out to [the.ancestral.home.stay@gmail.com]</p>
     </div>
   </div>
 
   <script>
     (function(){
+      // Endpoints Configuration
+      var ENDPOINTS = {
+        prod: "https://script.google.com/macros/s/AKfycbzsSJKyUnW6FDAvHbiDbqRitg2SOPECjgBkk1_vGIZbYsgmf2LuFVQqV4dbyoV-3tg6mQ/exec",
+        uat:  "https://script.google.com/macros/s/AKfycbyyLa9kOInMAxhZ-Cs0SWuliiyYfvWryEcyxJLyiE0dM0_E3_sWSpAkONIiaM70mGAZNA/exec"
+      };
+
+      // Detect environment from query parameters (e.g. ?env=uat)
+      var params = new URLSearchParams(window.location.search);
+      var envParam = (params.get('env') || '').toLowerCase();
+      var isUAT = (envParam === 'uat' || envParam === 'test');
+      var targetUrl = isUAT ? ENDPOINTS.uat : ENDPOINTS.prod;
+
       var iframe = document.getElementById('frame');
       var loader = document.getElementById('loader');
       var fallback = document.getElementById('fallback');
       var retryBtn = document.getElementById('retryBtn');
       var openLink = document.getElementById('openLink');
+      var spinner = document.getElementById('spinner');
+      var uatTag = document.getElementById('uatTag');
+
+      // Set target URL for iframe and fallback link
+      iframe.src = targetUrl;
+      openLink.href = targetUrl;
+
+      if (isUAT) {
+        document.title = "Ancestral Home Operations (UAT)";
+        spinner.classList.add('uat');
+        openLink.classList.add('uat');
+        uatTag.style.display = 'inline-block';
+      }
 
       // Keep iframe hidden until we consider it successfully loaded.
-      function showIframe(){ iframe.style.visibility = 'visible'; loader.classList.add('hidden'); fallback.classList.remove('visible'); fallback.setAttribute('aria-hidden', 'true'); }
-      function showFallback(){ loader.classList.add('hidden'); fallback.classList.add('visible'); fallback.setAttribute('aria-hidden', 'false'); iframe.style.visibility = 'hidden'; }
+      function showIframe(){
+        iframe.style.visibility = 'visible';
+        loader.classList.add('hidden');
+        fallback.classList.remove('visible');
+        fallback.setAttribute('aria-hidden', 'true');
+      }
+
+      function showFallback(){
+        loader.classList.add('hidden');
+        fallback.classList.add('visible');
+        fallback.setAttribute('aria-hidden', 'false');
+        iframe.style.visibility = 'hidden';
+      }
 
       // Adjust height on resize (handles mobile browsers)
-      function setSize(){ iframe.style.height = window.innerHeight + 'px'; }
+      function setSize(){
+        iframe.style.height = window.innerHeight + 'px';
+      }
       window.addEventListener('resize', setSize);
       setSize();
 
@@ -72,34 +115,28 @@
 
       // If iframe fires load, treat as success (most of the time this means content loaded).
       iframe.addEventListener('load', function(){
-        // Small delay to allow paint and avoid flicker when load is nearly instant
         loaded = true;
         setTimeout(showIframe, 150);
       });
 
-      // If the iframe doesn't fire load within this time, show a graceful loader (we already show one),
-      // but only show the error fallback after a longer timeout.
+      // Timeout for fallback error screen
       var ERROR_TIMEOUT = 10000; // 10s
-      setTimeout(function(){ if(!loaded){
-        // still loading after ERROR_TIMEOUT -> show error fallback
-        showFallback();
-      } }, ERROR_TIMEOUT);
+      setTimeout(function(){
+        if(!loaded){
+          showFallback();
+        }
+      }, ERROR_TIMEOUT);
 
-      // Provide the retry behaviour
+      // Provide retry behavior
       retryBtn.addEventListener('click', function(){
-        // a full page refresh is the simplest reliable retry
         window.location.reload();
       });
-
-      // In some browsers the iframe may be blocked and still fire load; we can't reliably detect frame content cross-origin.
-      // The fallback gives the user a clear option to open in a new tab or refresh.
 
       // Accessibility: if user opens the page with reduced motion, avoid spinner animation
       try{
         var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)');
         if(prefersReduced && prefersReduced.matches){
-          var s = document.querySelector('.spinner');
-          if(s) s.style.animation = 'none';
+          if(spinner) spinner.style.animation = 'none';
         }
       }catch(e){}
 

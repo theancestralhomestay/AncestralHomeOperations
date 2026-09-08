@@ -3,56 +3,299 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Ancestral Home Operations</title>
+  <title>The Ancestral Home - Operations</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    html, body { height: 100%; margin: 0; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; }
-    #frame { position: fixed; top: 0; left: 0; width: 100%; height: 100%; border: 0; visibility: hidden; }
+    html, body {
+      height: 100%;
+      margin: 0;
+      background-color: #0f172a;
+      color: #f8fafc;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      overflow: hidden;
+    }
+    #frame {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      visibility: hidden;
+      background-color: #0f172a;
+    }
 
-    /* loader overlay shown while iframe is loading */
-    #loader { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fff; color: #000; z-index: 50; }
-    #loader.hidden { display: none !important; }
-    .spinner { width: 56px; height: 56px; border-radius: 50%; border: 6px solid rgba(0,0,0,0.08); border-left-color: #0366d6; animation: spin 1s linear infinite; }
-    .spinner.uat { border-left-color: #e65100; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .loading-note { margin-top: 18px; text-align: center; color: #222; max-width: 720px; }
-    .uat-badge { display: inline-block; padding: 3px 8px; font-size: 12px; font-weight: 700; color: #fff; background-color: #e65100; border-radius: 4px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    /* Unified branded loader overlay shown while iframe is loading */
+    #loader {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at 50% 38%, #1e293b 0%, #0f172a 100%);
+      color: #fff;
+      z-index: 50;
+      padding: 24px;
+      box-sizing: border-box;
+      text-align: center;
+      transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.4s;
+    }
+    #loader.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
 
-    /* fallback (error) state */
-    #fallback { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; background: #fff; color: #000; z-index: 60; }
-    #fallback.visible { display: flex; }
-    .btn { display: inline-block; margin-top: 12px; padding: 10px 18px; background: #0366d6; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 500; }
-    .btn.uat { background: #e65100; }
-    .btn.secondary { background: #6c757d; }
-    .note { max-width: 720px; text-align: center; padding: 16px; }
+    .brand-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      max-width: 380px;
+      width: 100%;
+    }
 
-    /* small responsive tweak */
-    @media (max-width:420px){ .loading-note, .note { padding: 12px; } }
+    .brand-badge {
+      width: 68px;
+      height: 68px;
+      border-radius: 20px;
+      background: rgba(2, 6, 23, 0.95);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 0 24px rgba(245, 158, 11, 0.12);
+      margin-bottom: 16px;
+      box-sizing: border-box;
+    }
+
+    .brand-title {
+      font-family: Georgia, Cambria, 'Times New Roman', serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: #fef3c7;
+      letter-spacing: 0.5px;
+      margin: 0 0 4px 0;
+      text-align: center;
+    }
+
+    .brand-subtitle {
+      font-size: 11.5px;
+      color: rgba(253, 230, 138, 0.7);
+      font-weight: 500;
+      letter-spacing: 0.2px;
+      margin: 0 0 18px 0;
+      text-align: center;
+    }
+
+    .uat-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #fdba74;
+      background: rgba(234, 88, 12, 0.18);
+      border: 1px solid rgba(249, 115, 22, 0.35);
+      border-radius: 9999px;
+      margin-bottom: 18px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .uat-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: #f97316;
+      animation: pulse 1.5s infinite;
+    }
+
+    .loader-track {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(51, 65, 85, 0.7);
+      padding: 8px 18px;
+      border-radius: 9999px;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid rgba(245, 158, 11, 0.2);
+      border-top-color: #f59e0b;
+      animation: spin 0.8s linear infinite;
+      box-sizing: border-box;
+      flex-shrink: 0;
+    }
+
+    .spinner.uat {
+      border: 2px solid rgba(249, 115, 22, 0.25);
+      border-top-color: #f97316;
+    }
+
+    .status-text {
+      font-size: 12px;
+      font-weight: 500;
+      color: #94a3b8;
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    /* Fallback (error / timeout) state */
+    #fallback {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: #0f172a;
+      color: #f8fafc;
+      z-index: 60;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    #fallback.visible {
+      display: flex;
+    }
+
+    .fallback-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 20px;
+      padding: 28px 24px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+    }
+
+    .fallback-card h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin: 0 0 10px 0;
+    }
+
+    .fallback-card p {
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.5;
+      margin: 0 0 20px 0;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: all 0.2s;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn.primary {
+      background: #f59e0b;
+      color: #0f172a;
+    }
+
+    .btn.primary:hover {
+      background: #d97706;
+    }
+
+    .btn.primary.uat {
+      background: #ea580c;
+      color: #ffffff;
+    }
+
+    .btn.primary.uat:hover {
+      background: #c2410c;
+    }
+
+    .btn.secondary {
+      background: #334155;
+      color: #e2e8f0;
+      border: 1px solid #475569;
+    }
+
+    .btn.secondary:hover {
+      background: #475569;
+    }
+
+    @media (max-width: 420px) {
+      .brand-card, .fallback-card { padding: 16px; }
+      .brand-title { font-size: 18px; }
+    }
   </style>
 </head>
 <body>
   <!-- iframe pointing dynamically to PROD or UAT Google Script URL -->
   <iframe id="frame" allowfullscreen sandbox="allow-scripts allow-forms allow-same-origin allow-popups"></iframe>
   
-  <!-- loader shown while iframe is loading -->
+  <!-- Unified branded loader shown while iframe is loading -->
   <div id="loader" role="status" aria-live="polite">
-    <div id="uatTag" class="uat-badge" style="display:none">UAT Mode</div>
-    <div id="spinner" class="spinner" aria-hidden="true"></div>
-    <div class="loading-note">
-      <h2 id="loadingTitle" style="margin:0 0 8px 0;font-weight:600"></h2>
-      <p id="loadingSubtitle" style="margin:0;color:#555"></p>
+    <div class="brand-card">
+      <div class="brand-badge">
+        <svg viewBox="0 0 400 240" style="width:100%;height:100%;" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="200,110 50,130 350,130" fill="none" opacity="0.3" stroke="#E2C29B" stroke-width="1.75"/>
+          <path d="M40,110 L195,30 L205,30 L360,110 L345,115 L200,42 L55,115 Z" fill="#693B2B" stroke="#C5A070" stroke-width="2"/>
+          <path d="M200,32 L200,120 M140,62 L140,120 M260,62 L260,120" stroke="#C5A070" stroke-width="1.5" opacity="0.8"/>
+          <path d="M80,125 Q40,105 30,65 Q55,75 80,110" fill="#3B5335" opacity="0.75" stroke="#C5A070" stroke-width="1"/>
+          <path d="M320,125 Q360,105 370,65 Q345,75 320,110" fill="#3B5335" opacity="0.75" stroke="#C5A070" stroke-width="1"/>
+        </svg>
+      </div>
+      <h1 class="brand-title">The Ancestral Home</h1>
+      <p class="brand-subtitle">Cultural Retreat &amp; Villa • Operations System</p>
+      <div id="uatTag" class="uat-badge" style="display:none">
+        <span class="uat-dot"></span>
+        <span>UAT Mode</span>
+      </div>
+      <div class="loader-track">
+        <div id="spinner" class="spinner" aria-hidden="true"></div>
+        <span class="status-text">Loading Operations System...</span>
+      </div>
     </div>
   </div>
 
-  <!-- fallback shown only when embedding is blocked or the page fails to load inside the iframe -->
+  <!-- Fallback shown only when embedding is blocked or the page fails to load inside the iframe -->
   <div id="fallback" role="dialog" aria-live="polite" aria-hidden="true">
-    <div class="note">
-      <h1 style="margin-top:0">Couldn't load App</h1>
-      <p id="fallbackMsg" style="color:#444">The App couldn't be Loaded. This can happen if a network error occurred or third-party cookies are blocked.</p>
-      <p>
-        <a id="openLink" class="btn" target="_blank" rel="noopener">Open in new tab</a>
-        <button id="retryBtn" class="btn secondary" style="margin-left:8px">Refresh page</button>
-      </p>
-      <p style="margin-top:1em;color:#666;font-size:0.9em">Please reach out to [the.ancestral.home.stay@gmail.com]</p>
+    <div class="fallback-card">
+      <h1>Couldn't Load App</h1>
+      <p id="fallbackMsg">The Operations System could not be loaded. This can happen if a network error occurred or third-party cookies are blocked.</p>
+      <div class="btn-group">
+        <a id="openLink" class="btn primary" target="_blank" rel="noopener">Open in new tab</a>
+        <button id="retryBtn" class="btn secondary">Refresh page</button>
+      </div>
+      <p style="margin-top:20px;margin-bottom:0;color:#64748b;font-size:12px">Support: the.ancestral.home.stay@gmail.com</p>
     </div>
   </div>
 
@@ -83,10 +326,10 @@
       openLink.href = targetUrl;
 
       if (isUAT) {
-        document.title = "Ancestral Home Operations (UAT)";
+        document.title = "The Ancestral Home - Operations (UAT)";
         spinner.classList.add('uat');
         openLink.classList.add('uat');
-        uatTag.style.display = 'inline-block';
+        uatTag.style.display = 'inline-flex';
       }
 
       // Keep iframe hidden until we consider it successfully loaded.
@@ -113,7 +356,7 @@
 
       var loaded = false;
 
-      // If iframe fires load, treat as success (most of the time this means content loaded).
+      // If iframe fires load, treat as success (content loaded).
       iframe.addEventListener('load', function(){
         loaded = true;
         setTimeout(showIframe, 150);

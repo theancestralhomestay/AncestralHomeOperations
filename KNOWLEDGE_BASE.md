@@ -56,8 +56,8 @@ The portal inspects the query string `window.location.search` on initial load:
 
 | Target Environment | Query Parameter | Portal Entry URL | Embedded Apps Script Deployment | Visual Cues |
 | :--- | :--- | :--- | :--- | :--- |
-| **Production** | *(None / default)* | `https://theancestralhomestay.github.io/AncestralHomeOperations/` | `AKfycbzsSJKy...` (PROD) | Blue spinner, standard title |
-| **UAT / Staging** | `?env=uat` | `https://theancestralhomestay.github.io/AncestralHomeOperations/?env=uat` | `AKfycbyyLa9k...` (UAT) | Orange spinner, "UAT Mode" badge, title `Ancestral Home Operations (UAT)` |
+| **Production** | *(None / default)* | `https://theancestralhomestay.github.io/AncestralHomeOperations/` | `AKfycbzsSJKy...` (PROD) | Slate-900 background, Villa logo badge, Amber brand spinner (`#f59e0b`), standard title |
+| **UAT / Staging** | `?env=uat` | `https://theancestralhomestay.github.io/AncestralHomeOperations/?env=uat` | `AKfycbyyLa9k...` (UAT) | Slate-900 background, Villa logo badge, Orange brand spinner (`#f97316`), "UAT Mode" badge, title `The Ancestral Home - Operations (UAT)` |
 
 ---
 

@@ -185,6 +185,7 @@ When a new major version or new deployment ID is created in `ancestralhomestayap
 
 | Date | Version | Summary of Changes |
 | :--- | :--- | :--- |
+| **2026-09-15** | 1.2.0 | Added parent-to-iframe message bridge (`INCOMING_SHARED_FILE` / `SHARED_FILES_RECEIVED`) with cold-start buffer for seamless native share intent support |
 | **2026-09-03** | 1.1.0 | Added dynamic multi-environment routing (`?env=uat`), UAT badge/styling, and centralized `ENDPOINTS` configuration dictionary |
 | **2026-09-03** | 1.0.0 | Initialized comprehensive architecture knowledge base and README |
 | **2026-08-18** | 0.9.0 | Added loading spinner animation, 10s graceful timeout, and retry button |

@@ -355,11 +355,45 @@
       setSize();
 
       var loaded = false;
+      var pendingSharedMessage = null;
+
+      function forwardToIframe(msg) {
+        if (iframe && iframe.contentWindow) {
+          iframe.contentWindow.postMessage(msg, '*');
+        }
+      }
+
+      function handleIncomingNativeMessage(event) {
+        var rawData = event.data;
+        if (!rawData) return;
+        var msgData = rawData;
+        if (typeof rawData === 'string') {
+          try { msgData = JSON.parse(rawData); } catch(e) {}
+        }
+        if (!msgData || typeof msgData !== 'object') return;
+
+        if (msgData.type === 'INCOMING_SHARED_FILE' || msgData.type === 'SHARED_FILES_RECEIVED') {
+          if (loaded) {
+            forwardToIframe(msgData);
+          } else {
+            pendingSharedMessage = msgData;
+          }
+        }
+      }
+
+      window.addEventListener('message', handleIncomingNativeMessage);
+      document.addEventListener('message', handleIncomingNativeMessage);
 
       // If iframe fires load, treat as success (content loaded).
       iframe.addEventListener('load', function(){
         loaded = true;
-        setTimeout(showIframe, 150);
+        setTimeout(function() {
+          showIframe();
+          if (pendingSharedMessage) {
+            forwardToIframe(pendingSharedMessage);
+            pendingSharedMessage = null;
+          }
+        }, 150);
       });
 
       // Timeout for fallback error screen

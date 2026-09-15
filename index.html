@@ -356,10 +356,21 @@
 
       var loaded = false;
       var pendingSharedMessage = null;
+      var appScriptWindow = null;
 
       function forwardToIframe(msg) {
+        if (!msg) return;
+        // 1. Forward directly to child Apps Script window if reference was captured via handshake
+        if (appScriptWindow) {
+          try {
+            appScriptWindow.postMessage(msg, '*');
+          } catch(e) {}
+        }
+        // 2. Also forward to iframe contentWindow
         if (iframe && iframe.contentWindow) {
-          iframe.contentWindow.postMessage(msg, '*');
+          try {
+            iframe.contentWindow.postMessage(msg, '*');
+          } catch(e) {}
         }
       }
 
@@ -372,17 +383,49 @@
         }
         if (!msgData || typeof msgData !== 'object') return;
 
-        if (msgData.type === 'INCOMING_SHARED_FILE' || msgData.type === 'SHARED_FILES_RECEIVED') {
-          if (loaded) {
-            forwardToIframe(msgData);
-          } else {
-            pendingSharedMessage = msgData;
+        // Handshake from child Apps Script iframe:
+        if (msgData.type === 'APPS_SCRIPT_READY' || msgData.type === 'GET_PENDING_SHARED_FILES') {
+          if (event.source) {
+            appScriptWindow = event.source;
           }
+          if (pendingSharedMessage) {
+            forwardToIframe(pendingSharedMessage);
+            var toSend = pendingSharedMessage;
+            setTimeout(function() { forwardToIframe(toSend); }, 350);
+            setTimeout(function() { forwardToIframe(toSend); }, 1000);
+          }
+          return;
+        }
+
+        if (msgData.type === 'INCOMING_SHARED_FILE' || msgData.type === 'SHARED_FILES_RECEIVED') {
+          pendingSharedMessage = msgData;
+          forwardToIframe(msgData);
+          setTimeout(function() { forwardToIframe(msgData); }, 500);
+          setTimeout(function() { forwardToIframe(msgData); }, 1500);
+          setTimeout(function() { forwardToIframe(msgData); }, 3000);
         }
       }
 
+      window.__handleIncomingSharedFiles = function(files) {
+        if (!files || !files.length) return;
+        var msg = {
+          type: 'INCOMING_SHARED_FILE',
+          payload: { files: files }
+        };
+        pendingSharedMessage = msg;
+        forwardToIframe(msg);
+        setTimeout(function() { forwardToIframe(msg); }, 500);
+        setTimeout(function() { forwardToIframe(msg); }, 1500);
+        setTimeout(function() { forwardToIframe(msg); }, 3000);
+      };
+
       window.addEventListener('message', handleIncomingNativeMessage);
       document.addEventListener('message', handleIncomingNativeMessage);
+      window.addEventListener('ANCESTRAL_SHARED_FILE', function(e) {
+        if (e && e.detail && e.detail.files) {
+          window.__handleIncomingSharedFiles(e.detail.files);
+        }
+      });
 
       // If iframe fires load, treat as success (content loaded).
       iframe.addEventListener('load', function(){
@@ -391,7 +434,6 @@
           showIframe();
           if (pendingSharedMessage) {
             forwardToIframe(pendingSharedMessage);
-            pendingSharedMessage = null;
           }
         }, 150);
       });

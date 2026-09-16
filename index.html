@@ -355,23 +355,52 @@
       setSize();
 
       var loaded = false;
-      var pendingSharedMessage = null;
+      var pendingSharedFiles = null;
       var appScriptWindow = null;
+      var chunkBuffers = {}; // fileId -> { name, mimeType, size, chunks: [], receivedCount, totalChunks }
+      var pulseIntervalId = null;
 
-      function forwardToIframe(msg) {
-        if (!msg) return;
-        // 1. Forward directly to child Apps Script window if reference was captured via handshake
+      function startDeliveryPulse() {
+        if (pulseIntervalId) clearInterval(pulseIntervalId);
+        var pulseAttempts = 0;
+        var MAX_ATTEMPTS = 40; // 40 * 600ms = 24 seconds of active delivery attempts
+
+        pulseIntervalId = setInterval(function() {
+          pulseAttempts++;
+          if (!pendingSharedFiles || pendingSharedFiles.length === 0 || pulseAttempts > MAX_ATTEMPTS) {
+            clearInterval(pulseIntervalId);
+            pulseIntervalId = null;
+            return;
+          }
+          var msg = {
+            type: 'INCOMING_SHARED_FILE',
+            payload: { files: pendingSharedFiles }
+          };
+          // 1. Direct post to captured child window
+          if (appScriptWindow) {
+            try { appScriptWindow.postMessage(msg, '*'); } catch(e) {}
+          }
+          // 2. Post to iframe contentWindow
+          if (iframe && iframe.contentWindow) {
+            try { iframe.contentWindow.postMessage(msg, '*'); } catch(e) {}
+          }
+        }, 600);
+      }
+
+      function forwardToIframe(files) {
+        if (!files || !files.length) return;
+        pendingSharedFiles = files;
+        var msg = {
+          type: 'INCOMING_SHARED_FILE',
+          payload: { files: files }
+        };
         if (appScriptWindow) {
-          try {
-            appScriptWindow.postMessage(msg, '*');
-          } catch(e) {}
+          try { appScriptWindow.postMessage(msg, '*'); } catch(e) {}
         }
-        // 2. Also forward to iframe contentWindow
         if (iframe && iframe.contentWindow) {
-          try {
-            iframe.contentWindow.postMessage(msg, '*');
-          } catch(e) {}
+          try { iframe.contentWindow.postMessage(msg, '*'); } catch(e) {}
         }
+        startDeliveryPulse();
       }
 
       function handleIncomingNativeMessage(event) {
@@ -388,35 +417,67 @@
           if (event.source) {
             appScriptWindow = event.source;
           }
-          if (pendingSharedMessage) {
-            forwardToIframe(pendingSharedMessage);
-            var toSend = pendingSharedMessage;
-            setTimeout(function() { forwardToIframe(toSend); }, 350);
-            setTimeout(function() { forwardToIframe(toSend); }, 1000);
+          if (pendingSharedFiles && pendingSharedFiles.length > 0) {
+            forwardToIframe(pendingSharedFiles);
           }
           return;
         }
 
+        // Acknowledgment from child Apps Script iframe when files are successfully attached:
+        if (msgData.type === 'SHARED_FILES_CONSUMED') {
+          pendingSharedFiles = null;
+          if (pulseIntervalId) {
+            clearInterval(pulseIntervalId);
+            pulseIntervalId = null;
+          }
+          return;
+        }
+
+        // Chunked file transfer from native shell
+        if (msgData.type === 'INCOMING_SHARED_FILE_CHUNK') {
+          var fId = msgData.fileId || ('file_' + msgData.fileIndex);
+          if (!chunkBuffers[fId]) {
+            chunkBuffers[fId] = {
+              name: msgData.name,
+              mimeType: msgData.mimeType,
+              size: msgData.size,
+              chunks: new Array(msgData.totalChunks),
+              receivedCount: 0,
+              totalChunks: msgData.totalChunks,
+            };
+          }
+          var buf = chunkBuffers[fId];
+          if (!buf.chunks[msgData.chunkIndex]) {
+            buf.chunks[msgData.chunkIndex] = msgData.chunkData || '';
+            buf.receivedCount++;
+          }
+          if (buf.receivedCount >= buf.totalChunks) {
+            var fullBase64 = buf.chunks.join('');
+            var assembledFile = {
+              name: buf.name,
+              mimeType: buf.mimeType,
+              size: buf.size || Math.round((fullBase64.length * 3) / 4),
+              base64: fullBase64,
+            };
+            delete chunkBuffers[fId];
+            forwardToIframe([assembledFile]);
+          }
+          return;
+        }
+
+        // Whole file payload transfer
         if (msgData.type === 'INCOMING_SHARED_FILE' || msgData.type === 'SHARED_FILES_RECEIVED') {
-          pendingSharedMessage = msgData;
-          forwardToIframe(msgData);
-          setTimeout(function() { forwardToIframe(msgData); }, 500);
-          setTimeout(function() { forwardToIframe(msgData); }, 1500);
-          setTimeout(function() { forwardToIframe(msgData); }, 3000);
+          var payload = msgData.payload || msgData;
+          var files = payload.files || (payload.file ? [payload.file] : []);
+          if (files && files.length > 0) {
+            forwardToIframe(files);
+          }
         }
       }
 
       window.__handleIncomingSharedFiles = function(files) {
         if (!files || !files.length) return;
-        var msg = {
-          type: 'INCOMING_SHARED_FILE',
-          payload: { files: files }
-        };
-        pendingSharedMessage = msg;
-        forwardToIframe(msg);
-        setTimeout(function() { forwardToIframe(msg); }, 500);
-        setTimeout(function() { forwardToIframe(msg); }, 1500);
-        setTimeout(function() { forwardToIframe(msg); }, 3000);
+        forwardToIframe(files);
       };
 
       window.addEventListener('message', handleIncomingNativeMessage);
@@ -432,8 +493,8 @@
         loaded = true;
         setTimeout(function() {
           showIframe();
-          if (pendingSharedMessage) {
-            forwardToIframe(pendingSharedMessage);
+          if (pendingSharedFiles && pendingSharedFiles.length > 0) {
+            forwardToIframe(pendingSharedFiles);
           }
         }, 150);
       });

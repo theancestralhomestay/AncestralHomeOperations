@@ -259,7 +259,7 @@
 </head>
 <body>
   <!-- iframe pointing dynamically to PROD or UAT Google Script URL -->
-  <iframe id="frame" allowfullscreen sandbox="allow-scripts allow-forms allow-same-origin allow-popups"></iframe>
+  <iframe id="frame" allowfullscreen sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"></iframe>
   
   <!-- Unified branded loader shown while iframe is loading -->
   <div id="loader" role="status" aria-live="polite">
@@ -429,6 +429,26 @@
           if (pulseIntervalId) {
             clearInterval(pulseIntervalId);
             pulseIntervalId = null;
+          }
+          return;
+        }
+
+        // Open external URL (receipt attachment, Drive link, PDF)
+        if (msgData.type === 'OPEN_EXTERNAL_URL' || msgData.type === 'OPEN_URL') {
+          var extUrl = (msgData.payload && msgData.payload.url) || msgData.url;
+          if (extUrl) {
+            if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'OPEN_EXTERNAL_URL',
+                payload: { url: extUrl }
+              }));
+            } else {
+              try {
+                window.open(extUrl, '_blank', 'noopener,noreferrer');
+              } catch(e) {
+                window.location.href = extUrl;
+              }
+            }
           }
           return;
         }

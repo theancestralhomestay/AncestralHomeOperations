@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - develop
   workflow_dispatch:
 
 permissions:
@@ -22,25 +23,53 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      # ── Checkout both branches ──────────────────────────────
+      - name: Checkout main (Production source)
         uses: actions/checkout@v4
+        with:
+          ref: main
+          path: _source_prod
 
-      # --- SECURITY GUARD: Block Production deployment from non-main branches ---
-      - name: Guard Production Deployment
-        if: github.ref != 'refs/heads/main'
+      - name: Checkout develop (UAT source)
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          path: _source_uat
+        continue-on-error: true  # Graceful fallback if develop doesn't exist yet
+
+      # ── Assemble composite site ─────────────────────────────
+      - name: Build composite deployment
         run: |
-          echo "::error::❌ Production GitHub Pages deployments are strictly restricted to the 'main' branch!"
-          echo "Attempted deployment from branch '${{ github.ref_name }}' was blocked."
-          echo "Please merge changes into 'main' before deploying."
-          exit 1
+          mkdir -p _site/uat
 
+          echo "📦 Copying Production files from main → _site/"
+          cp _source_prod/index.html _site/
+          [ -f _source_prod/KNOWLEDGE_BASE.md ] && cp _source_prod/KNOWLEDGE_BASE.md _site/ || true
+          [ -f _source_prod/README.md ] && cp _source_prod/README.md _site/ || true
+
+          if [ -d _source_uat ]; then
+            echo "📦 Copying UAT files from develop → _site/uat/"
+            cp _source_uat/index.html _site/uat/
+            [ -f _source_uat/KNOWLEDGE_BASE.md ] && cp _source_uat/KNOWLEDGE_BASE.md _site/uat/ || true
+            [ -f _source_uat/README.md ] && cp _source_uat/README.md _site/uat/ || true
+          else
+            echo "⚠️ develop branch not found — UAT subdirectory will be empty"
+          fi
+
+          # Prevent Jekyll processing
+          touch _site/.nojekyll
+
+          echo "✅ Composite site assembled:"
+          find _site -type f | sort
+
+      # ── Deploy ──────────────────────────────────────────────
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: '_site'
 
       - name: Deploy to GitHub Pages
         id: deployment

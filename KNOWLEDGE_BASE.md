@@ -50,14 +50,22 @@ graph TD
 
 ---
 
-## 2. Dynamic Multi-Environment Routing (`?env=uat`)
+## 2. Dynamic Multi-Environment Routing
 
-The portal inspects the query string `window.location.search` on initial load:
+The portal detects its target environment using **two mechanisms** (either is sufficient):
 
-| Target Environment | Query Parameter | Portal Entry URL | Embedded Apps Script Deployment | Visual Cues |
+1. **Path-based detection (automatic):** If the page is served from a URL path containing `/uat` (e.g., the `/uat/` subdirectory deployment), UAT mode activates automatically.
+2. **Query parameter (manual/legacy):** Appending `?env=uat` or `?env=test` to any URL activates UAT mode.
+
+```javascript
+var pathIsUAT = window.location.pathname.indexOf('/uat') !== -1;
+var isUAT = pathIsUAT || envParam === 'uat' || envParam === 'test';
+```
+
+| Target Environment | Source Branch | Deployed Path | Embedded Apps Script | Visual Cues |
 | :--- | :--- | :--- | :--- | :--- |
-| **Production** | *(None / default)* | `https://theancestralhomestay.github.io/AncestralHomeOperations/` | `AKfycbzsSJKy...` (PROD) | Slate-900 background, Villa logo badge, Amber brand spinner (`#f59e0b`), standard title |
-| **UAT / Staging** | `?env=uat` | `https://theancestralhomestay.github.io/AncestralHomeOperations/?env=uat` | `AKfycbyyLa9k...` (UAT) | Slate-900 background, Villa logo badge, Orange brand spinner (`#f97316`), "UAT Mode" badge, title `The Ancestral Home - Operations (UAT)` |
+| **Production** | `main` | `/` (root) | `AKfycbzsSJKy...` (PROD) | Slate-900 background, Villa logo badge, Amber spinner (`#f59e0b`), standard title |
+| **UAT / Staging** | `develop` | `/uat/` | `AKfycbyyLa9k...` (UAT) | 3px orange top bar (persistent), Orange spinner (`#f97316`), "UAT Mode" badge, title `(UAT)` |
 
 ---
 
@@ -145,10 +153,13 @@ try {
 
 ```
 ancestralhomeoperations/
-├── .git/                   # Git version control metadata
-├── index.html              # Core single-file portal application
-├── KNOWLEDGE_BASE.md       # Architectural specification and operations manual
-└── README.md               # Project documentation
+├── .git/                                     # Git version control metadata
+├── .github/
+│   └── workflows/
+│       └── deploy-pages.yml                  # Composite UAT/Prod GitHub Pages deployment
+├── index.html                                # Core single-file portal application
+├── KNOWLEDGE_BASE.md                         # Architectural specification and operations manual
+└── README.md                                 # Project documentation
 ```
 
 ### Key Configuration Variables (`index.html`)
@@ -164,19 +175,38 @@ var ENDPOINTS = {
 
 ## 5. Deployment & Maintenance Procedures
 
-### Deploying Updates via Git
-1. Ensure changes in `index.html` are tested across desktop and mobile browsers.
-2. Commit and push to `main` (or `feature/enhancements`):
-   ```bash
-   git add index.html KNOWLEDGE_BASE.md
-   git commit -m "Update operations portal configuration"
-   git push origin <branch>
-   ```
-3. GitHub Pages deploys automatically.
+### Composite Deployment Model
+
+The project uses a **composite GitHub Pages deployment** — both Production and UAT are served from the same site, each sourced from a different branch:
+
+| Environment | Source Branch | Deployed Path | URL |
+| :--- | :--- | :--- | :--- |
+| **Production** | `main` | `/` (root) | `theancestralhomestay.github.io/AncestralHomeOperations/` |
+| **UAT / Staging** | `develop` | `/uat/` | `theancestralhomestay.github.io/AncestralHomeOperations/uat/` |
+
+The GitHub Actions workflow (`deploy-pages.yml`) handles this automatically:
+
+1. **Triggers** on pushes to `main`, `develop`, or manual `workflow_dispatch`
+2. **Checks out both branches** (`main` → `_source_prod/`, `develop` → `_source_uat/`)
+3. **Assembles a composite `_site/` directory**: production files at root, UAT files in `/uat/`
+4. **Deploys the composite site** to GitHub Pages
+5. **Safety guarantee:** Production content always comes from `main` — a push to `develop` can never modify production files
+
+### GitHub Environment Prerequisite
+
+The `github-pages` environment must allow deployments from both `main` and `develop`. Configure this under **Repository Settings → Environments → `github-pages` → Deployment branches**.
+
+### Deploying Updates
+
+| Task | How |
+| :--- | :--- |
+| **Test a change** | Push to `develop` → verify at `/uat/` → production is untouched |
+| **Promote to production** | Merge `develop` → `main` → both paths redeploy |
+| **Hotfix production** | Push directly to `main` → root is updated immediately |
 
 ### Updating Target Google Apps Script URLs
 When a new major version or new deployment ID is created in `ancestralhomestayapp`:
-1. Open [`index.html`](file:///sdcard/Projects/ancestralhomestay/ancestralhomeoperations/index.html).
+1. Open [`index.html`](index.html).
 2. Update `ENDPOINTS.prod` or `ENDPOINTS.uat` in the `ENDPOINTS` dictionary at the top of the script.
 
 ---
@@ -185,6 +215,7 @@ When a new major version or new deployment ID is created in `ancestralhomestayap
 
 | Date | Version | Summary of Changes |
 | :--- | :--- | :--- |
+| **2026-09-24** | 1.3.0 | Composite UAT/Prod GitHub Pages deployment (`main` → root, `develop` → `/uat/`), path-based UAT auto-detection, persistent 3px orange UAT indicator bar |
 | **2026-09-15** | 1.2.0 | Added parent-to-iframe message bridge (`INCOMING_SHARED_FILE` / `SHARED_FILES_RECEIVED`) with cold-start buffer for seamless native share intent support |
 | **2026-09-03** | 1.1.0 | Added dynamic multi-environment routing (`?env=uat`), UAT badge/styling, and centralized `ENDPOINTS` configuration dictionary |
 | **2026-09-03** | 1.0.0 | Initialized comprehensive architecture knowledge base and README |

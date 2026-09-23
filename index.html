@@ -27,6 +27,11 @@
       background-color: #0f172a;
     }
 
+    /* Persistent UAT environment indicator (thin orange strip at top of viewport) */
+    .uat-bar { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 3px; background: #f97316; z-index: 9999; }
+    .uat-bar.visible { display: block; }
+    .uat-bar.visible ~ #frame { top: 3px; height: calc(100% - 3px); }
+
     /* Unified branded loader overlay shown while iframe is loading */
     #loader {
       position: fixed;
@@ -258,6 +263,9 @@
   </style>
 </head>
 <body>
+  <!-- persistent UAT environment indicator (thin orange strip at top) -->
+  <div id="uatBar" class="uat-bar"></div>
+
   <!-- iframe pointing dynamically to PROD or UAT Google Script URL -->
   <iframe id="frame" allowfullscreen sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"></iframe>
   
@@ -307,10 +315,11 @@
         uat:  "https://script.google.com/macros/s/AKfycbyyLa9kOInMAxhZ-Cs0SWuliiyYfvWryEcyxJLyiE0dM0_E3_sWSpAkONIiaM70mGAZNA/exec"
       };
 
-      // Detect environment from query parameters (e.g. ?env=uat)
+      // Detect environment from query parameters (e.g. ?env=uat) or URL path (e.g. /uat/)
       var params = new URLSearchParams(window.location.search);
       var envParam = (params.get('env') || '').toLowerCase();
-      var isUAT = (envParam === 'uat' || envParam === 'test');
+      var pathIsUAT = window.location.pathname.indexOf('/uat') !== -1;
+      var isUAT = pathIsUAT || envParam === 'uat' || envParam === 'test';
       var targetUrl = isUAT ? ENDPOINTS.uat : ENDPOINTS.prod;
 
       var iframe = document.getElementById('frame');
@@ -330,6 +339,7 @@
         spinner.classList.add('uat');
         openLink.classList.add('uat');
         uatTag.style.display = 'inline-flex';
+        document.getElementById('uatBar').classList.add('visible');
       }
 
       // Keep iframe hidden until we consider it successfully loaded.
